@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Musicazoo</string>
+    <string name="title_activity_share">ShareActivity</string>
+</resources>
