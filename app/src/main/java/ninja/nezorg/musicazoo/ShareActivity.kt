@@ -1,7 +1,6 @@
 package ninja.nezorg.musicazoo
 
 import android.os.Bundle
-import android.support.design.widget.Snackbar
 import android.support.v4.app.NotificationCompat
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.app.ShareCompat
@@ -11,24 +10,25 @@ import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 
-import kotlinx.android.synthetic.main.activity_share.*
 import java.net.URLEncoder
 import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.os.Build
 import com.android.volley.DefaultRetryPolicy
 import android.app.Activity
-import android.content.Intent
-import android.net.Uri
+import android.support.v7.preference.PreferenceManager
 
-
-const val MUSICAZOO_QUEUE_PREFIX = "http://musicazoo.mit.edu/enqueue?youtube_id="
+const val MUSICAZOO_QUEUE_PROTO = "http://"
+const val MUSICAZOO_QUEUE_URI = "/enqueue?youtube_id="
+const val DEFAULT_MUSICAZOO_SERVER = "musicazoo.mit.edu"
 const val CHANNEL_ID = "queueing"
 
-class ShareActivity : Activity() {
+class ShareActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        PreferenceManager.setDefaultValues(this, R.xml.pref_general, false)
 
         val reader = ShareCompat.IntentReader.from(this)
         if (reader.isShareIntent) {
@@ -40,11 +40,17 @@ class ShareActivity : Activity() {
         finish()
     }
 
-    fun queueVideo(url: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+    private fun buildQueueUrl(youtubeUrl: String) : String {
+        val server = getSharedPreferences("ninja.nezorg.musicazoo_preferences", 0)
+                .getString("server", DEFAULT_MUSICAZOO_SERVER)
+        val encodedUrl = URLEncoder.encode(youtubeUrl, "UTF-8")
+        return MUSICAZOO_QUEUE_PROTO + server + MUSICAZOO_QUEUE_URI + encodedUrl
+    }
+
+    private fun queueVideo(youtubeUrl: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
         val requestQueue = Volley.newRequestQueue(this)
-        val encodedURL = URLEncoder.encode(url, "UTF-8")
         val req = JsonObjectRequest(Request.Method.POST,
-                MUSICAZOO_QUEUE_PREFIX + encodedURL,
+                buildQueueUrl(youtubeUrl),
                 null,
                 Response.Listener { resp ->
                     if (resp.optBoolean("success", false)) {
@@ -54,19 +60,21 @@ class ShareActivity : Activity() {
                     }
                 },
                 Response.ErrorListener { _ -> onFailure() })
-        val retryPolicy = DefaultRetryPolicy(0, -1, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT)
-        req.setRetryPolicy(retryPolicy)
+        req.retryPolicy = DefaultRetryPolicy(
+                0,
+                -1,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT)
         requestQueue.add(req)
     }
 
-    fun makeNotificationId(): Int {
-        val prefs = getSharedPreferences("notifications", 0)
+    private fun makeNotificationId(): Int {
+        val prefs = getSharedPreferences("nezorg.ninja.musicazoo_preferences", 0)
         val id = prefs.getInt("notificationId", 0)
         prefs.edit().putInt("notificationId", id + 1).apply()
         return id
     }
 
-    fun showNotification(url: String): Pair<() -> Unit, () -> Unit> {
+    private fun showNotification(url: String): Pair<() -> Unit, () -> Unit> {
         createNotificationChannel()
         val manager = NotificationManagerCompat.from(this)
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)

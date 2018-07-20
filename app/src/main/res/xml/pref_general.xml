@@ -1,0 +1,11 @@
+<android.support.v7.preference.PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <android.support.v7.preference.EditTextPreference
+        android:key="server"
+        android:title="Musicazoo server"
+        android:summary="foobar"
+        android:dialogMessage="e.g. &quot;musicazoo.mit.edu&quot;"
+        android:defaultValue="musicazoo.mit.edu" />
+
+</android.support.v7.preference.PreferenceScreen>
